@@ -1,13 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0d0d12;
-  --color-panel: #15151d;
-  --color-line: #26262f;
-  --color-ink: #f2f2f5;
-  --color-mute: #8b8b98;
-  --color-acc: #ff4d00;
-  --color-ok: #3ddc97;
+  --color-bg: #0E2338;      /* Azul Marino Profundo: fondos */
+  --color-panel: #173A5C;   /* azul marino elevado: contenedores oscuros */
+  --color-surface: #F3F0E6; /* Blanco Marfil: tarjetas claras */
+  --color-dark: #1E1B18;    /* Carbón: texto sobre superficies claras */
+  --color-ink: #F3F0E6;     /* Marfil: texto sobre fondos oscuros */
+  --color-mute: #A7B7C4;    /* texto atenuado (derivado de la base) */
+  --color-acc: #D95228;     /* CTA / Action: botones principales */
+  --color-gold: #DDA136;    /* Dorado: marcos, insignias, destacar */
+  --color-line: #DDA136;    /* dorado como borde sutil (usar /50) */
+  --color-danger: #A91D22;  /* Rojo Rubí: alertas */
 }
 
 @keyframes pop {
