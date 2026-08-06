@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0d0d12;
+  --color-panel: #15151d;
+  --color-line: #26262f;
+  --color-ink: #f2f2f5;
+  --color-mute: #8b8b98;
+  --color-acc: #ff4d00;
+  --color-ok: #3ddc97;
+}
+
+@keyframes pop {
+  from { transform: scale(.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes rise {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes flip {
+  from { transform: perspective(600px) rotateX(90deg); opacity: 0; }
+  to { transform: perspective(600px) rotateX(0); opacity: 1; }
+}
+@keyframes copo {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.2) rotate(8deg); }
+}
+.anim-pop { animation: pop .25s ease both; }
+.anim-rise { animation: rise .3s ease both; }
+.anim-flip { animation: flip .35s ease both; }
+.anim-copo { animation: copo 1.2s ease-in-out infinite; }
+
+/* ponytail: toast es 5 líneas, no merece un componente */
+.toast { position: fixed; bottom: calc(1.5rem + env(safe-area-inset-bottom)); left: 50%; transform: translate(-50%, 150%); transition: transform .25s; z-index: 50; }
+.toast.on { transform: translate(-50%, 0); }
