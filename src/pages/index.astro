@@ -1,0 +1,280 @@
+---
+import { ViewTransitions } from 'astro:transitions';
+---
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d0d12" />
+  <title>Amigos de Mierda · Cachonda v2</title>
+  <ViewTransitions />
+  <style>
+    :root {
+      --bg: #0d0d12;
+      --panel: #15151d;
+      --line: #26262f;
+      --text: #f2f2f5;
+      --muted: #8b8b98;
+      --accent: #ff4d00;
+      --ok: #3ddc97;
+    }
+    * { box-sizing: border-box; margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body {
+      background: radial-gradient(1200px 600px at 50% -10%, #1c1c28 0%, var(--bg) 55%);
+      color: var(--text);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .wrap { max-width: 520px; margin: 0 auto; padding: 16px 16px 24px; }
+    header { display: flex; justify-content: space-between; align-items: center; }
+    header .brand { font-weight: 800; letter-spacing: .06em; }
+    header .brand b { color: var(--accent); }
+    .badge { display: inline-block; background: var(--accent); color: #fff; font-weight: 800; font-size: .65rem; padding: 3px 8px; border-radius: 99px; letter-spacing: .06em; vertical-align: middle; }
+    .sub { color: var(--muted); font-size: .82rem; margin-top: 4px; }
+    .sub b { color: var(--ok); }
+
+    .carta {
+      margin-top: 18px;
+      min-height: 200px;
+      background: #f4f4f7;
+      color: #0d0d12;
+      border-radius: 22px;
+      padding: 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      font-size: 1.18rem;
+      line-height: 1.45;
+      font-weight: 700;
+      box-shadow: 0 20px 50px -20px rgba(0,0,0,.7);
+    }
+    .carta .pie { display: flex; justify-content: space-between; align-items: center; color: #0a0d12; opacity: .5; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin-top: 18px; }
+
+    .leyenda { margin: 18px 0 12px; color: var(--muted); font-size: .85rem; }
+    .leyenda b { color: var(--text); }
+
+    .jugadores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .jugador {
+      position: relative;
+      background: var(--panel);
+      border: 2px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform .08s, border-color .08s;
+    }
+    .jugador:active { transform: scale(.97); }
+    .jugador .nom { font-weight: 700; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .jugador .pts { color: var(--muted); font-size: .85rem; margin-top: auto; }
+    .jugador.lector { border-color: var(--ok); }
+    .jugador.eliminado { opacity: .35; pointer-events: none; filter: grayscale(1); }
+    .jugador.eliminado::after { content: "ELIMINADO"; position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; letter-spacing: .1em; color: var(--muted); font-size: .8rem; }
+    .barra { height: 8px; border-radius: 6px; background: #2a2a34; overflow: hidden; }
+    .barra i { display: block; height: 100%; background: var(--accent); border-radius: 6px; }
+    .jugador.full .barra i { background: var(--ok); }
+
+    .acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+    button { border: 0; border-radius: 14px; padding: 16px; font-size: 1rem; font-weight: 800; cursor: pointer; }
+    button:disabled { opacity: .35; cursor: default; }
+    .btn-p { background: var(--accent); color: #fff; }
+    .btn-s { background: var(--panel); color: var(--text); border: 1px solid var(--line); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); padding: 8px 12px; font-size: .8rem; border-radius: 10px; }
+
+    .setup { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+    .addrow { display: flex; gap: 8px; }
+    .addrow input { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 15px; color: var(--text); font-size: 1rem; outline: none; }
+    .addrow:focus-within input { border-color: var(--accent); }
+    .addbtn { background: var(--ok); color: #062c1d; min-width: 82px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { display: flex; align-items: center; gap: 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 6px 8px 6px 14px; font-weight: 700; }
+    .chip button { background: var(--line); color: var(--muted); border-radius: 99px; padding: 2px 8px; font-size: .85rem; }
+    .umbral { display: flex; align-items: center; gap: 18px; margin: 10px 0; }
+    .umbral label { color: var(--muted); font-size: .9rem; flex: 1; }
+    .umbral b { font-size: 1.4rem; min-width: 24px; text-align: center; }
+    .umbral button { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; width: 42px; height: 42px; padding: 0; font-size: 1.3rem; }
+
+    .ganador { text-align: center; padding: 40px 0; }
+    .ganador .copo { font-size: 3.4rem; line-height: 1; }
+    .ganador h2 { font-size: 1.5rem; margin: 16px 0 6px; color: var(--ok); }
+    .ganador p { color: var(--muted); }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(150%); background: #fff; color: #0a0a0f; font-weight: 800; border-radius: 99px; padding: 12px 20px; transition: transform .25s; box-shadow: 0 10px 30px rgba(0,0,0,.4); z-index: 10; }
+    .toast.on { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <main class="wrap" id="app"></main>
+  <div class="toast" id="toast"></div>
+  <script type="module">
+    import { nuevaPartida, marcar, deshacer, siguiente } from "../game";
+
+    const KEY = "adm-cachonda-v2";
+    const $ = (sel) => document.querySelector(sel);
+    const root = $("#app");
+    const toastEl = $("#toast");
+
+    let partida = load();
+    let setup = { nombres: [], umbral: 5 };
+    let draft = "";
+
+    function load() {
+      try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; }
+    }
+    function save(p) { localStorage.setItem(KEY, JSON.stringify(p)); }
+    function clearGame() { localStorage.removeItem(KEY); partida = null; render(); }
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("on");
+      clearTimeout(toastEl._t);
+      toastEl._t = setTimeout(() => toastEl.classList.remove("on"), 1500);
+    }
+    const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    function render() {
+      if (!partida) renderSetup();
+      else if (partida.vencedor) renderFin();
+      else renderJuego();
+    }
+    render();
+
+    function renderSetup() {
+      root.innerHTML = `
+        <header>
+          <div>
+            <div class="brand"><b>AMIGOS DE MIERDA</b> <span class="badge">CACHONDA v2</span></div>
+            <div class="sub">El juego del peor de todos</div>
+          </div>
+        </header>
+        <div class="setup">
+          <div class="addrow">
+            <input id="nombre" placeholder="Nombre del jugador" autocomplete="off" maxlength="18" value="${esc(draft)}">
+            <button class="addbtn" id="add">Añadir</button>
+          </div>
+          <div class="chips" id="chips"></div>
+          <div class="umbral">
+            <label>Señalamientos para eliminar</label>
+            <button id="menos">-</button>
+            <b id="umbral">${setup.umbral}</b>
+            <button id="mas">+</button>
+          </div>
+          <button class="btn-p" id="empezar">Empezar partida (${setup.nombres.length})</button>
+        </div>`;
+
+      const input = $("#nombre");
+      $("#add").onclick = addJugador;
+      input.onkeydown = (e) => { draft = input.value; if (e.key === "Enter") e.preventDefault(), addJugador(); };
+      input.oninput = () => { draft = input.value; };
+      $("#mas").onclick = () => { setup.umbral = Math.min(20, setup.umbral + 1); $("#umbral").textContent = setup.umbral; };
+      $("#menos").onclick = () => { setup.umbral = Math.max(2, setup.umbral - 1); $("#umbral").textContent = setup.umbral; };
+
+      function addJugador() {
+        const v = input.value.trim();
+        if (!v) return;
+        if (setup.nombres.includes(v)) return toast("Ese nombre ya esta");
+        setup.nombres.push(v);
+        input.value = ""; draft = "";
+        renderChips();
+        toast(v + " añadido");
+        input.focus();
+      }
+      function renderChips() {
+        $("#chips").innerHTML = setup.nombres.map(n => `<span class="chip">${esc(n)}<button data-x="${esc(n)}">X</button></span>`).join("");
+        $("#chips").querySelectorAll("button").forEach(b => b.onclick = () => {
+          setup.nombres = setup.nombres.filter(n => n !== b.dataset.x);
+          renderChips();
+          updateStart();
+        });
+        updateStart();
+      }
+      function updateStart() {
+        const b = $("#empezar");
+        b.disabled = setup.nombres.length < 2;
+        b.textContent = setup.nombres.length < 2 ? "Necesitas al menos 2 jugadores" : `Empezar partida (${setup.nombres.length})`;
+      }
+      $("#empezar").onclick = () => {
+        partida = nuevaPartida(setup.nombres, setup.umbral);
+        setup = { nombres: [], umbral: 5 };
+        save(partida);
+        render();
+      };
+      renderChips();
+      input.focus();
+    }
+
+    function renderJuego() {
+      const p = partida;
+      const lector = p.jugadores[p.lector];
+      root.innerHTML = `
+        <header>
+          <div>
+            <div class="brand"><b>AMIGOS DE MIERDA</b> <span class="badge">CACHONDA v2</span></div>
+            <div class="sub">Lee: <b>${esc(lector.nombre)}</b> · Ronda ${p.ronda}</div>
+          </div>
+          <button class="btn-ghost" id="reset">Reiniciar</button>
+        </header>
+        <div class="carta">
+          <div>${esc(p.cartaActual)}</div>
+          <div class="pie"><span>${esc(lector.nombre)} lee</span><span>${p.indiceMazo + 1}/${p.mazoBarajado.length}</span></div>
+        </div>
+        <div class="leyenda">Los demás señalan a su elegido.<b> Toca al más señalado</b> para sumarle 1.</div>
+        <div class="jugadores">${p.jugadores.map((j, i) => {
+          const pct = Math.min(100, Math.round((j.puntos / p.umbral) * 100));
+          const cls = ["jugador", i === p.lector ? "lector" : "", j.eliminado ? "eliminado" : "", j.puntos >= p.umbral ? "full" : ""].filter(Boolean).join(" ");
+          return `<div class="${cls}" data-i="${i}">
+            <div class="nom">${esc(j.nombre)}</div>
+            <div class="barra"><i style="width:${pct}%"></i></div>
+            <div class="pts">${j.puntos}/${p.umbral}</div>
+          </div>`;
+        }).join("")}</div>
+        <div class="acciones">
+          <button class="btn-s" id="back">Deshacer ultimo</button>
+          <button class="btn-p" id="next">Siguiente carta</button>
+        </div>`;
+
+      $(".jugadores").onclick = (e) => {
+        const el = e.target.closest(".jugador");
+        if (!el) return;
+        const j = p.jugadores[+el.dataset.i];
+        if (j.eliminado || p.vencedor) return;
+        marcar(p, j.nombre);
+        save(p);
+        if (p.vencedor) { toast("El peor de todos existe"); render(); return; }
+        toast("+1 " + j.nombre);
+        render();
+      };
+      $("#next").onclick = () => { siguiente(p); save(p); render(); };
+      $("#back").onclick = () => {
+        if (!p.historial.length) return toast("Nada para deshacer");
+        deshacer(p, p.historial.pop());
+        save(p);
+        render();
+        toast("Deshecho");
+      };
+      $("#reset").onclick = () => { if (confirm("Reiniciar el juego?")) clearGame(); render(); };
+    }
+
+    function renderFin() {
+      const p = partida;
+      root.innerHTML = `
+        <div class="ganador">
+          <div class="copo">★</div>
+          <h2>${esc(p.ganador)} es EL AMIGO DE MIERDA</h2>
+          <p>El peor de todos.</p>
+        </div>
+        <div class="jugadores" style="grid-template-columns:1fr">
+          ${p.jugadores.map(j => `
+            <div class="jugador ${j.eliminado ? "eliminado" : ""}">
+              <div class="nom">${esc(j.nombre)}</div>
+              <div class="pts">${j.puntos} / ${p.umbral} puntos</div>
+            </div>`).join("")}
+        </div>
+        <button class="btn-p" id="otra" style="width:100%;margin-top:20px">Jugar otra vez</button>`;
+      $("#otra").onclick = () => { clearGame(); render(); };
+    }
+  </script>
+</body>
+</html>
