@@ -51,7 +51,7 @@ import "../styles/global.css";
       root.innerHTML = `
         <header class="flex flex-col items-center pt-1">
           <div class="flex w-full shrink-0 items-center justify-center overflow-hidden">
-            <img src="${BASE}logo.jpg" alt="Amigos de Mierda" class="max-h-28 w-auto max-w-full object-contain">
+            <img src="${BASE}logo.png" alt="Amigos de Mierda" class="max-h-28 w-auto max-w-full object-contain">
           </div>
           <div class="mt-1 text-sm text-mute">El juego del peor de todos</div>
         </header>
@@ -130,11 +130,14 @@ import "../styles/global.css";
           </div>
           <button class="rounded-lg border border-line/40 bg-transparent px-2 py-1 text-xs font-bold text-mute transition active:scale-95" id="reset">Reiniciar</button>
         </header>
-        <div class="anim-flip relative mt-3 flex min-h-0 flex-1 flex-col justify-between overflow-y-auto rounded-[22px] border-4 border-gold/50 bg-surface p-4 text-[1.02rem] font-bold leading-relaxed text-dark shadow-[0_20px_50px_-20px_rgba(0,0,0,.7)]">
-          <span class="absolute left-3 top-2 text-2xl text-gold">${palo}</span>
-          <span class="absolute bottom-2 right-3 rotate-180 text-2xl text-gold">${palo}</span>
-          <div class="flex h-full items-center pt-5">${esc(p.cartaActual)}</div>
-          <div class="mt-3 flex items-center justify-between text-[.7rem] font-extrabold uppercase tracking-wider opacity-50"><span>${esc(lector.nombre)} lee</span><span class="tabular-nums">${palo} ${p.indiceMazo + 1}/${p.mazoBarajado.length}</span></div>
+        <div class="anim-flip relative mt-3 flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-[22px] border-4 border-gold/50 bg-panel text-[1.02rem] font-bold leading-relaxed shadow-[0_20px_50px_-20px_rgba(0,0,0,.7)]">
+          <img src="${BASE}carta.png" alt="" aria-hidden="true" class="pointer-events-none absolute inset-0 h-full w-full object-cover" onerror="this.remove()">
+          <span class="absolute left-3 top-2 z-10 text-2xl text-gold drop-shadow-[0_1px_3px_rgba(0,0,0,.7)]">${palo}</span>
+          <span class="absolute bottom-2 right-3 z-10 rotate-180 text-2xl text-gold drop-shadow-[0_1px_3px_rgba(0,0,0,.7)]">${palo}</span>
+          <div class="relative z-10 flex h-full items-center overflow-y-auto pt-5">
+            <div class="rounded-2xl bg-surface/90 p-3 text-[1.02rem] font-bold leading-relaxed text-dark shadow-lg">${esc(p.cartaActual)}</div>
+          </div>
+          <div class="relative z-10 mt-3 flex items-center justify-between text-[.7rem] font-extrabold uppercase tracking-wider opacity-60 text-ink"><span>${esc(lector.nombre)} lee</span><span class="tabular-nums">${palo} ${p.indiceMazo + 1}/${p.mazoBarajado.length}</span></div>
         </div>
         <div class="mt-2 text-[.78rem] text-mute">Todos señalan a su elegido. Toca al más señalado: alcanzar <b class="text-ink">${p.umbral}</b> lo corona <b class="text-gold">EL AMIGO DE MIERDA</b>.</div>
         <div class="mt-2 grid grid-cols-2 gap-2" id="players">${p.jugadores.map((j, i) => {
