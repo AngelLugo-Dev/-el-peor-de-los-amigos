@@ -1,9 +1,11 @@
 import { defineConfig } from 'astro/config';
 import tailwindcss from '@tailwindcss/vite';
 
-// ponytail: static site, no SSR, no integrations
+// ponytail: base dinamica — Vercel sirve en la raiz, GH Pages bajo el nombre del repo.
+const base = process.env.VERCEL ? '/' : '/-el-peor-de-los-amigos/';
+
 export default defineConfig({
   output: 'static',
-  base: '/amigos-de-mierda/',
+  base,
   vite: { plugins: [tailwindcss()] }
 });

@@ -42,7 +42,7 @@ pnpm preview   # sirve dist/ localmente para verificar el build
 
 ## Despliegue (GitHub Pages)
 
-- `astro.config.mjs` define `base: '/amigos-de-mierda/'` — TODA URL de asset sale con ese prefijo.
+- `astro.config.mjs` define el `base` dinámicamente: `/` en Vercel (usa la variable `VERCEL`), `/-el-peor-de-los-amigos/` en GitHub Pages — TODA URL de asset sale con ese prefijo según el deploy.
 - El workflow hace `pnpm install --frozen-lockfile && pnpm build` y sube `dist/` como artifact de Pages.
 - Tailwind compila a un CSS estático; no necesita nada especial para Pages.
 

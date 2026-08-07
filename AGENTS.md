@@ -52,7 +52,7 @@ MIERDA** (pantalla final). No hay eliminaciones, no hay "último en pie". Detall
    (sin extensión) resolvía contra la URL del navegador → 404 → pantalla en negro.
    Regla: script **sin atributos** (Astro lo hace module por si y lo bundlea) e imports con
    ruta relativa CON extensión, ej. `import { marcar } from "../../src/game.ts"`.
-2. **Base path**: todos los assets salen con `/amigos-de-mierda/`. En dev/preview usarla en las URLs.
+2. **Base path dinámico**: `astro.config.mjs` usa `/` si `VERCEL` está seteado, si no `/-el-peor-de-los-amigos/` (GH Pages). En dev/preview los assets salen con esa base en las URLs. El script client usa `import.meta.env.BASE_URL` para el logo porque se inyecta por innerHTML (Astro no lo reescribe).
 3. **localStorage**: usuario con partida vieja → se descarta (bump de clave v3). `load()` devuelve
    `null` ante cualquier error de parseo y eso es **comportement correcto.
 4. **Layout móvil**: `body` es `h-dvh overflow-hidden`, el `main` es flex column; la carta usa
