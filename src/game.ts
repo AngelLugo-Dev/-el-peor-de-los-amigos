@@ -16,6 +16,7 @@ export interface Partida {
   cartaActual: string;
   lector: number; // índice del que lee
   ronda: number;
+  marcado: boolean; // ya se señaló a alguien en esta ronda (1 selección por ronda)
   ganador: string | null; // quien alcanzó el umbral = amigo de mierda
   historial: string[]; // nombres en orden para deshacer
 }
@@ -39,29 +40,32 @@ export function nuevaPartida(nombres: string[], umbral: number): Partida {
     cartaActual: mazoBarajado[0],
     lector: 0,
     ronda: 1,
+    marcado: false,
     ganador: null,
     historial: [],
   };
 }
 
-// sumar punto al señalado; al llegar al umbral se corona amigo de mierda
+// sumar punto al señalado; 1 sola selección por ronda; al llegar al umbral se corona amigo de mierda
 export function marcar(p: Partida, nombre: string) {
   const j = p.jugadores.find((x) => x.nombre === nombre);
-  if (!j || p.ganador) return;
+  if (!j || p.ganador || p.marcado) return;
   j.puntos += 1;
   p.historial.push(nombre);
+  p.marcado = true;
   if (j.puntos >= p.umbral) p.ganador = nombre;
 }
 
-// deshacer el último punto (error de dedo)
+// deshacer el último punto (error de dedo); deja disponible la selección de la ronda
 export function deshacer(p: Partida, nombre: string) {
   const j = p.jugadores.find((x) => x.nombre === nombre);
   if (!j || j.puntos <= 0) return;
   j.puntos -= 1;
   if (j.puntos < p.umbral) p.ganador = null;
+  p.marcado = false;
 }
 
-// siguiente ronda: nueva carta (sin repetir hasta agotar), rota quién lee
+// siguiente ronda: nueva carta (sin repetir hasta agotar), rota quién lee, reabre la selección
 export function siguiente(p: Partida) {
   if (p.ganador) return;
   p.lector = (p.lector + 1) % p.jugadores.length;
@@ -72,4 +76,5 @@ export function siguiente(p: Partida) {
     p.ronda += 1;
   }
   p.cartaActual = p.mazoBarajado[p.indiceMazo];
+  p.marcado = false;
 }

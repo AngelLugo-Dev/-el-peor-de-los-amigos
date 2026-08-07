@@ -50,8 +50,8 @@ pnpm preview   # sirve dist/ localmente para verificar el build
 
 - **Regla de resultado**: el que llega al umbral pierde/gana el título (antes se eliminaba al
   llegado al límite y ganaba el último en pie — lógica invertida, corregida; ver historial git).
-- **`localStorage`**: clave `adm-amigos-v1` con la `Partida` serializada completa. El esquema
-  cambió (se eliminaron `eliminado`/`vencedor`, se agregó `ganador`) — si un usuario tiene
+- **`localStorage`**: clave `adm-amigos-v2` con la `Partida` serializada completa. El esquema
+  cambió (se eliminaron `eliminado`/`vencedor`, se agregó `ganador` y `marcado`) — si un usuario tiene
   una partida vieja guardada, se descarta por el cambio de clave.
 - **Layout sin scroll en móvil**: `body h-dvh overflow-hidden` + `main` flex column; la carta es
   `flex-1 min-h-0` y absorbe el alto sobrante (scroll interno solo si la pregunta es muy larga).

@@ -40,7 +40,7 @@ MIERDA** (pantalla final). No hay eliminaciones, no hay "último en pie". Detall
 
 ## Convenciones
 
-- **Señum** - la clave de localStorage. `adm-amigos-v1`. El esquema de Partida cambió (se eliminaron `eliminado`/`vencedor`, se agregó `ganador`). No cambiar de formato a la ligera; si se cambia el esquema, **bumpear la clave**.
+- **Señum** - la clave de localStorage. `adm-amigos-v2`. El esquema de Partida cambió (se eliminaron `eliminado`/`vencedor`, se agregó `ganador`/`marcado`). No cambiar de formato a la ligera; si se cambia el esquema, **bumpear la clave**.
 - UI en **español** (textos grotescos/grosores a gusto). Nombres de funciones en inglés (código), textos en español.
 - Sin comentarios salvo los `ponytail:` (explican una simplificación deliberada y su techo).
 - Sin dependencias nuevas sin justificación: para escueta cosa alcanza stdlib/plataforma/unicode.

@@ -15,7 +15,7 @@ import "../styles/global.css";
   <script>
     import { nuevaPartida, marcar, deshacer, siguiente } from "../../src/game.ts";
 
-    const KEY = "adm-amigos-v1";
+    const KEY = "adm-amigos-v2";
     // ponytail: el script es client-side (innerHTML), Astro no reescribe la base → BASE_URL manual
     const BASE = import.meta.env.BASE_URL;
     const $ = (sel) => document.querySelector(sel);
@@ -139,7 +139,7 @@ import "../styles/global.css";
           </div>
           <div class="relative z-10 mt-3 flex items-center justify-between text-[.7rem] font-extrabold uppercase tracking-wider opacity-60 text-ink"><span>${esc(lector.nombre)} lee</span><span class="tabular-nums">${palo} ${p.indiceMazo + 1}/${p.mazoBarajado.length}</span></div>
         </div>
-        <div class="mt-2 text-[.78rem] text-mute">Todos señalan a su elegido. Toca al más señalado: alcanzar <b class="text-ink">${p.umbral}</b> lo corona <b class="text-gold">EL AMIGO DE MIERDA</b>.</div>
+        <div class="mt-2 text-[.78rem] text-mute">Todos señalan a su elegido: <b class="text-ink">toca una vez por ronda</b> al más señalado. Alcanzar <b class="text-gold">${p.umbral}</b> lo corona <b class="text-gold">EL AMIGO DE MIERDA</b>.</div>
         <div class="mt-2 grid grid-cols-2 gap-2" id="players">${p.jugadores.map((j, i) => {
           const pct = Math.min(100, Math.round((j.puntos / p.umbral) * 100));
           const borde = i === p.lector ? "border-gold" : "border-line/40";
@@ -159,6 +159,7 @@ import "../styles/global.css";
         if (!el) return;
         const j = p.jugadores[+el.dataset.i];
         if (p.ganador) return;
+        if (p.marcado) return toast("Ya señalaste en esta ronda");
         marcar(p, j.nombre);
         save(p);
         if (p.ganador) { toast("El amigo de mierda existe"); render(); return; }
