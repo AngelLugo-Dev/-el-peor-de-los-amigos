@@ -30,8 +30,8 @@ export function shuffle(a: string[]): string[] {
   return r;
 }
 
-export function nuevaPartida(nombres: string[], umbral: number): Partida {
-  const mazoBarajado = shuffle(cartas);
+export function nuevaPartida(nombres: string[], umbral: number, cartasPropias: string[] = []): Partida {
+  const mazoBarajado = shuffle([...cartas, ...cartasPropias]);
   return {
     jugadores: nombres.map((n) => ({ nombre: n, puntos: 0 })),
     umbral,

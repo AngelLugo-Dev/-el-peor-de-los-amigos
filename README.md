@@ -27,7 +27,7 @@ No hay backend ni multijugador online: la partida vive en `localStorage` del dis
 src/
   pages/index.astro      → Toda la UI (vanilla JS: innerHTML + handlers), 3 vistas: setup / juego / fin
   game.ts                → Lógica pura: nuevaPartida, marcar, deshacer, siguiente, shuffle
-  data/deck.ts           → 110 preguntas (agregar/quitar libremente, se bundlean al build)
+  data/deck.ts           → 108 preguntas (agregar/quitar libremente, se bundlean al build)
   styles/global.css      → Import de Tailwind, tema, keyframes (pop/rise/flip/copo) y CSS del toast
 .github/workflows/deploy.yml → CI de GitHub Pages
 ```

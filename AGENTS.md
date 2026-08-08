@@ -31,7 +31,7 @@ MIERDA** (pantalla final). No hay eliminaciones, no hay "último en pie". Detall
 |---|---|---|
 | `src/pages/index.astro` | Toda la UI (innerHTML + handlers). Las 3 vistas: setup / juego / fin. | Cambios de UX/UI, textos, animaciones. |
 | `src/game.ts` | Lógica pura (nuevaPartida, marcar, deshacer, siguiente, shuffle). | Reglas del juego. Mantenerlo sin DOM. |
-| `src/data/deck.ts` | 110 preguntas (array de strings). | Agregar/quitar cartas libremente. |
+| `src/data/deck.ts` | 108 preguntas (array de strings). | Agregar/quitar cartas libremente. |
 | `src/styles/global.css` | Tailwind import + @theme (tokens de color) + keyframes + CSS del toast. | Colores, animaciones, estilos globales. |
 | `astro.config.mjs` | Static output + `base: '/amigos-de-mierda/'` + plugin Tailwind. | Config de build. |
 | `.github/workflows/deploy.yml` | CI de GitHub Pages (pnpm build → upload dist). | Deploy. |
