@@ -23,6 +23,7 @@ import "../styles/global.css";
     const toastEl = $("#toast");
 
     let partida = load();
+    let logo3D = null;
     let setup = { nombres: [], umbral: 5, cartasPropias: {} };
     let draft = "";
 
@@ -47,12 +48,10 @@ import "../styles/global.css";
     render();
 
     // ponytail: el resultado llega cuando alguien alcanza el umbral = EL AMIGO DE MIERDA. Sin eliminaciones.
-    function renderSetup() {
+    async function renderSetup() {
       root.innerHTML = `
         <header class="flex flex-col items-center pt-1">
-          <div class="flex w-full shrink-0 items-center justify-center overflow-hidden">
-            <img src="${BASE}logo.webp" alt="Amigos de Mierda" class="max-h-28 w-auto max-w-full object-contain">
-          </div>
+          <div id="logo3d" class="h-28 w-full overflow-hidden drop-shadow-[0_0_22px_rgba(221,161,54,.4)]"></div>
           <div class="mt-1 text-sm text-mute">El juego del peor de todos</div>
         </header>
         <div class="anim-rise mt-3 flex min-h-0 flex-1 flex-col">
@@ -81,6 +80,10 @@ import "../styles/global.css";
         </div>`;
 
       const input = $("#nombre");
+      // ponytail: import dinámico → three.js (y su peso) solo se carga en la pantalla de setup
+      if (logo3D) logo3D.dispose();
+      const { mountLogo3D } = await import("../../src/logo3d.ts");
+      logo3D = mountLogo3D($("#logo3d"), BASE + "logo.png");
       $("#add").onclick = addJugador;
       input.onkeydown = (e) => { draft = input.value; if (e.key === "Enter") e.preventDefault(), addJugador(); };
       input.oninput = () => { draft = input.value; };

@@ -31,6 +31,7 @@ MIERDA** (pantalla final). No hay eliminaciones, no hay "último en pie". Detall
 |---|---|---|
 | `src/pages/index.astro` | Toda la UI (innerHTML + handlers). Las 3 vistas: setup / juego / fin. | Cambios de UX/UI, textos, animaciones. |
 | `src/game.ts` | Lógica pura (nuevaPartida, marcar, deshacer, siguiente, shuffle). | Reglas del juego. Mantenerlo sin DOM. |
+| `src/logo3d.ts` | Animación 3D del logo en setup (Three.js): plano texturizado + partículas, mount/dispose, respeta prefers-reduced-motion. Se importa con `await import()` desde el script (three NO va en el bundle principal). | Tocar la animación 3D. |
 | `src/data/deck.ts` | 108 preguntas (array de strings). | Agregar/quitar cartas libremente. |
 | `src/styles/global.css` | Tailwind import + @theme (tokens de color) + keyframes + CSS del toast. | Colores, animaciones, estilos globales. |
 | `astro.config.mjs` | Static output + `base: '/amigos-de-mierda/'` + plugin Tailwind. | Config de build. |
@@ -43,7 +44,7 @@ MIERDA** (pantalla final). No hay eliminaciones, no hay "último en pie". Detall
 - **Señum** - la clave de localStorage. `adm-amigos-v2`. El esquema de Partida cambió (se eliminaron `eliminado`/`vencedor`, se agregó `ganador`/`marcado`). No cambiar de formato a la ligera; si se cambia el esquema, **bumpear la clave**.
 - UI en **español** (textos grotescos/grosores a gusto). Nombres de funciones en inglés (código), textos en español.
 - Sin comentarios salvo los `ponytail:` (explican una simplificación deliberada y su techo).
-- Sin dependencias nuevas sin justificación: para escueta cosa alcanza stdlib/plataforma/unicode.
+- Sin dependencias nuevas sin justificación: para escueta cosa alcanza stdlib/plataforma/unicode. Excepción registrada: `three` (animación 3D del logo, pedida explícitamente).
 
 ## Gotchas críticos (historial de bugs pagados)
 
