@@ -6,196 +6,664 @@ import "../styles/global.css";
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0d0d12" />
-  <title>Amigos de Mierda</title>
+  <meta name="theme-color" content="#DF4B38" />
+  <title>Amigo de Mierda</title>
 </head>
-<body class="h-dvh touch-manipulation overflow-hidden bg-[radial-gradient(1100px_600px_at_50%_-10%,#1A4976_0%,#0E2338_60%)] text-ink antialiased select-none">
-  <main class="mx-auto flex h-dvh w-full max-w-[520px] flex-col px-4 pb-[max(.75rem,env(safe-area-inset-bottom))] pt-3" id="app"></main>
-  <div class="toast rounded-full bg-surface px-5 py-3 text-[.9rem] font-extrabold text-dark shadow-xl" id="toast"></div>
-  <script>
-    import { nuevaPartida, marcar, deshacer, siguiente } from "../../src/game.ts";
+<body class="h-dvh touch-manipulation overflow-hidden bg-cream text-ink antialiased select-none">
+  <main class="mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-hidden bg-cream shadow-2xl" id="app"></main>
+  <div id="modal-root"></div>
+  <div class="toast brutal-box rounded-full bg-yellow px-5 py-2.5 text-sm font-black text-ink" id="toast"></div>
 
-    const KEY = "adm-amigos-v2";
-    // ponytail: el script es client-side (innerHTML), Astro no reescribe la base → BASE_URL manual
-    const BASE = import.meta.env.BASE_URL;
+  <script>
+    import {
+      nuevaPartida,
+      registrarVoto,
+      clasificacion,
+      inicialJugador,
+      AVATAR_COLORS,
+      NOMBRES_DEFAULT,
+    } from "../../src/game.ts";
+
+    const KEY = "adm-amigos-v3";
+    const SETUP_KEY = "adm-setup-v3";
     const $ = (sel) => document.querySelector(sel);
     const root = $("#app");
+    const modalRoot = $("#modal-root");
     const toastEl = $("#toast");
 
+    const CATEGORIAS = [
+      "CONFESIONES",
+      "TRAICIÓN",
+      "SIN FILTRO",
+      "MORAL DUDOSA",
+      "CARNE DE CAÑÓN",
+      "BAJO FONDO",
+    ];
+
     let partida = load();
-    let setup = { nombres: [], umbral: 5 };
-    let draft = "";
+    let setup = loadSetup();
+    let victimaSeleccionada = null;
 
     function load() {
-      try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; }
+      try {
+        const raw = localStorage.getItem(KEY);
+        if (!raw) return null;
+        const p = JSON.parse(raw);
+        if (!p || !Array.isArray(p.jugadores) || typeof p.rondasTotales !== "number") return null;
+        return p;
+      } catch {
+        return null;
+      }
     }
-    function save(p) { localStorage.setItem(KEY, JSON.stringify(p)); }
-    function clearGame() { localStorage.removeItem(KEY); partida = null; render(); }
+
+    function loadSetup() {
+      try {
+        const raw = localStorage.getItem(SETUP_KEY);
+        if (raw) {
+          const s = JSON.parse(raw);
+          if (s && typeof s.cantidad === "number" && Array.isArray(s.nombres) && typeof s.rondas === "number") {
+            return s;
+          }
+        }
+      } catch {}
+      return {
+        cantidad: 4,
+        nombres: [...NOMBRES_DEFAULT],
+        rondas: 5,
+      };
+    }
+
+    function save(p) {
+      localStorage.setItem(KEY, JSON.stringify(p));
+    }
+
+    function saveSetup() {
+      localStorage.setItem(SETUP_KEY, JSON.stringify(setup));
+    }
+
+    function clearGame() {
+      localStorage.removeItem(KEY);
+      partida = null;
+      victimaSeleccionada = null;
+      render();
+    }
+
     function toast(msg) {
       toastEl.textContent = msg;
       toastEl.classList.add("on");
       clearTimeout(toastEl._t);
-      toastEl._t = setTimeout(() => toastEl.classList.remove("on"), 1500);
+      toastEl._t = setTimeout(() => toastEl.classList.remove("on"), 1600);
     }
-    const esc = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    const esc = (s) =>
+      String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const pad3 = (n) => String(n).padStart(3, "0");
+
+    function duracionTexto(rondas) {
+      if (rondas === 3) return "5–10 MIN";
+      if (rondas === 10) return "20–35 MIN";
+      return "10–20 MIN";
+    }
+
+    function openReglasModal() {
+      modalRoot.innerHTML = `
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-4 backdrop-blur-[2px]" id="reglas-backdrop">
+          <div class="anim-pop brutal-box-lg relative flex max-h-[88dvh] w-full max-w-[420px] flex-col overflow-hidden rounded-[24px] bg-cream p-5 text-ink">
+            <div class="flex items-center justify-between border-b-2 border-ink/15 pb-3">
+              <div>
+                <div class="text-[0.7rem] font-extrabold uppercase tracking-widest text-red">MANUAL DE SUPERVIVENCIA</div>
+                <h2 class="text-xl font-black tracking-tight">¿Cómo se juega?</h2>
+              </div>
+              <button id="close-reglas" class="brutal-btn grid h-9 w-9 place-items-center rounded-full bg-yellow text-lg font-black leading-none" aria-label="Cerrar">×</button>
+            </div>
+
+            <div class="mt-3.5 space-y-3 overflow-y-auto pr-1 text-sm leading-snug">
+              <div class="brutal-box-sm flex gap-3 rounded-2xl bg-white p-3">
+                <span class="brutal-box-sm grid h-7 w-7 shrink-0 place-items-center rounded-full bg-yellow text-xs font-black">01</span>
+                <div>
+                  <div class="font-black">Leed la carta en voz alta</div>
+                  <p class="mt-0.5 text-xs font-semibold text-mute">Cada ronda revela una pregunta incómoda para destruir amistades.</p>
+                </div>
+              </div>
+
+              <div class="brutal-box-sm flex gap-3 rounded-2xl bg-white p-3">
+                <span class="brutal-box-sm grid h-7 w-7 shrink-0 place-items-center rounded-full bg-yellow text-xs font-black">02</span>
+                <div>
+                  <div class="font-black">Votad en secreto y pasad el móvil</div>
+                  <p class="mt-0.5 text-xs font-semibold text-mute">Por turnos, cada jugador elige a su víctima y confirma su voto. Cada veredicto suma <b class="text-ink">1 punto de mierda</b>.</p>
+                </div>
+              </div>
+
+              <div class="brutal-box-sm flex gap-3 rounded-2xl bg-white p-3">
+                <span class="brutal-box-sm grid h-7 w-7 shrink-0 place-items-center rounded-full bg-yellow text-xs font-black">03</span>
+                <div>
+                  <div class="font-black">Coronad al Amigo de Mierda</div>
+                  <p class="mt-0.5 text-xs font-semibold text-mute">Al terminar las rondas seleccionadas (3, 5 o 10), quien acumule más puntos se lleva el título de <b class="text-red">Perdedor Definitivo</b>.</p>
+                </div>
+              </div>
+            </div>
+
+            ${partida && !partida.terminada ? `
+              <button id="abandonar-partida" class="brutal-btn mt-3 w-full rounded-xl bg-white py-2.5 text-xs font-black uppercase tracking-wider text-red">
+                Abandonar partida actual
+              </button>
+            ` : ""}
+
+            <button id="entendido-reglas" class="brutal-btn mt-3 w-full rounded-xl bg-orange py-3 text-sm font-black uppercase tracking-wider text-ink">
+              ⚡ ¡Entendido, a traicionar!
+            </button>
+          </div>
+        </div>
+      `;
+
+      const close = () => { modalRoot.innerHTML = ""; };
+      $("#close-reglas").onclick = close;
+      $("#entendido-reglas").onclick = close;
+      $("#reglas-backdrop").onclick = (e) => {
+        if (e.target.id === "reglas-backdrop") close();
+      };
+      const btnAbandonar = $("#abandonar-partida");
+      if (btnAbandonar) {
+        btnAbandonar.onclick = () => {
+          close();
+          clearGame();
+        };
+      }
+    }
 
     function render() {
       if (!partida) renderSetup();
-      else if (partida.ganador) renderFin();
+      else if (partida.terminada) renderFin();
       else renderJuego();
     }
-    render();
 
-    // ponytail: el resultado llega cuando alguien alcanza el umbral = EL AMIGO DE MIERDA. Sin eliminaciones.
+    // VISTA 1: CONFIGURACIÓN
     function renderSetup() {
+      const cant = setup.cantidad;
+      const nombresActivos = setup.nombres.slice(0, cant);
+
       root.innerHTML = `
-        <header class="flex flex-col items-center pt-1">
-          <div class="flex w-full shrink-0 items-center justify-center overflow-hidden">
-            <img src="${BASE}logo.webp" alt="Amigos de Mierda" class="max-h-28 w-auto max-w-full object-contain">
-          </div>
-          <div class="mt-1 text-sm text-mute">El juego del peor de todos</div>
-        </header>
-        <div class="anim-rise mt-3 flex min-h-0 flex-1 flex-col">
-          <label for="nombre" class="text-[.85rem] font-extrabold uppercase tracking-widest text-ink">Agregar jugadores</label>
-          <div class="mt-1.5 flex gap-2">
-            <input id="nombre" class="h-12 flex-1 rounded-xl border border-line/40 bg-panel px-4 text-ink outline-none placeholder:text-mute focus:border-transparent focus:ring-2 focus:ring-gold" placeholder="Nombre del jugador" autocomplete="off" maxlength="18" value="${esc(draft)}">
-            <button class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gold text-3xl font-black leading-none text-dark transition active:scale-90" id="add" aria-label="Añadir jugador">+</button>
-          </div>
-          <div class="mt-3 min-h-8 max-h-24 overflow-y-auto" id="chips"></div>
-          <div class="mb-2 mt-auto pt-3 text-center">
-            <label class="text-[1.05rem] font-extrabold text-ink">Límite de puntos</label>
-            <div class="mt-2 flex items-center justify-center gap-4">
-              <button class="grid h-12 w-12 place-items-center rounded-xl border-2 border-gold/60 bg-panel text-2xl font-bold text-ink transition active:scale-90" id="menos" aria-label="Menos">−</button>
-              <b class="min-w-9 text-center text-[2rem] font-black tabular-nums text-gold" id="umbral">${setup.umbral}</b>
-              <button class="grid h-12 w-12 place-items-center rounded-xl bg-acc text-2xl font-bold text-white transition active:scale-90" id="mas" aria-label="Más">+</button>
+        <div class="flex h-full flex-col overflow-hidden bg-red">
+          <!-- Hero Superior Rojo -->
+          <header class="relative shrink-0 overflow-hidden px-4 pb-6 pt-3 text-center">
+            <!-- Decoraciones de cartas en las esquinas -->
+            <div class="brutal-box-sm pointer-events-none absolute -left-3 -top-3 h-12 w-10 -rotate-12 rounded-xl bg-blue"></div>
+            <div class="brutal-box-sm pointer-events-none absolute -right-2 top-6 flex h-14 w-11 rotate-12 items-center justify-center rounded-xl bg-yellow text-xl font-black text-ink">!</div>
+
+            <!-- Botón de Reglas arriba a la derecha -->
+            <div class="relative z-10 flex items-center justify-between">
+              <span class="rounded-full border border-white/30 bg-ink/20 px-2.5 py-0.5 text-[0.65rem] font-extrabold uppercase tracking-widest text-cream">3–8 JUGADORES</span>
+              <button id="btn-reglas-setup" class="brutal-btn flex items-center gap-1.5 rounded-full bg-yellow px-3 py-1 text-xs font-black text-ink" aria-label="Ver reglas">
+                <span class="grid h-4 w-4 place-items-center rounded-full border border-ink text-[0.65rem] leading-none">?</span>
+                <span>REGLAS</span>
+              </button>
             </div>
-          </div>
-          <button class="w-full rounded-2xl bg-acc py-4 text-lg font-extrabold text-white transition active:scale-[.98] disabled:opacity-35" id="empezar">Empezar partida (${setup.nombres.length})</button>
-        </div>`;
 
-      const input = $("#nombre");
-      $("#add").onclick = addJugador;
-      input.onkeydown = (e) => { draft = input.value; if (e.key === "Enter") e.preventDefault(), addJugador(); };
-      input.oninput = () => { draft = input.value; };
-      $("#mas").onclick = () => { setup.umbral = Math.min(20, setup.umbral + 1); $("#umbral").textContent = setup.umbral; };
-      $("#menos").onclick = () => { setup.umbral = Math.max(2, setup.umbral - 1); $("#umbral").textContent = setup.umbral; };
+            <div class="relative z-10 mt-1">
+              <div class="text-xs font-black uppercase tracking-[0.22em] text-yellow drop-shadow-[0_2px_0_#161513]">AMIGO DE</div>
+              <h1 class="title-extrude text-[2.75rem] font-black uppercase leading-[0.95] tracking-tight text-cream">MIERDA</h1>
+              <p class="mx-auto mt-1.5 max-w-[260px] text-xs font-bold leading-snug text-cream/95">
+                Descubre quién es la peor persona del grupo.<br>Con cariño.
+              </p>
+            </div>
+          </header>
 
-      function addJugador() {
-        const v = input.value.trim();
-        if (!v) return;
-        if (setup.nombres.includes(v)) return toast("Ese nombre ya existe");
-        setup.nombres.push(v);
-        input.value = ""; draft = "";
-        renderChips();
-        toast(v + " añadido");
-        input.focus();
-      }
-      function renderChips() {
-        $("#chips").innerHTML = setup.nombres.map(n => `<span class="anim-pop flex items-center gap-2 rounded-2xl border border-gold/30 bg-panel py-1 pl-1 pr-2 font-bold">
-          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gold/25 text-sm font-black text-gold uppercase">${esc(n[0])}</span>
-          <span class="truncate text-[.85rem] max-w-[8.5rem]">${esc(n)}</span>
-          <button class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-panel border border-line/30 text-sm text-mute transition active:scale-90" data-x="${esc(n)}" aria-label="Quitar ${esc(n)}">×</button>
-        </span>`).join("");
-        $("#chips").querySelectorAll("button").forEach(b => b.onclick = () => {
-          setup.nombres = setup.nombres.filter(n => n !== b.dataset.x);
-          renderChips();
-          updateStart();
-        });
-        updateStart();
-      }
-      function updateStart() {
-        const b = $("#empezar");
-        b.disabled = setup.nombres.length < 2;
-        b.textContent = setup.nombres.length < 2 ? "Necestas al menos 2 jugadores" : `Empezar partida (${setup.nombres.length})`;
-      }
-      $("#empezar").onclick = () => {
-        partida = nuevaPartida(setup.nombres, setup.umbral);
-        setup = { nombres: [], umbral: 5 };
+          <!-- Panel Crema Inferior -->
+          <section class="relative z-10 -mt-3 flex min-h-0 flex-1 flex-col justify-between overflow-y-auto rounded-t-[28px] border-t-[3px] border-ink bg-cream px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3.5">
+            <div>
+              <!-- Encabezado Nueva Partida -->
+              <div class="flex items-end justify-between border-b-2 border-ink/15 pb-2.5">
+                <div>
+                  <div class="text-[0.65rem] font-black uppercase tracking-widest text-red">NUEVA PARTIDA</div>
+                  <h2 class="text-xl font-black leading-tight tracking-tight text-ink">Preparad la traición</h2>
+                </div>
+                <span id="badge-duracion" class=" rounded-full border-2 border-ink bg-white px-2.5 py-0.5 text-[0.68rem] font-black uppercase tracking-wider text-ink">
+                  ${duracionTexto(setup.rondas)}
+                </span>
+              </div>
+
+              <!-- Paso 01: ¿Cuántos sois? -->
+              <div class="mt-3">
+                <div class="flex items-center gap-2">
+                  <span class="brutal-box-sm grid h-6 w-6 place-items-center rounded-full bg-yellow text-[0.68rem] font-black">01</span>
+                  <span class="text-xs font-black uppercase tracking-wider text-ink">¿CUÁNTOS SOIS?</span>
+                </div>
+
+                <div class="brutal-box mt-2 flex h-13 items-stretch overflow-hidden rounded-2xl bg-white">
+                  <button id="btn-menos" class="flex w-14 items-center justify-center border-r-2 border-ink bg-yellow text-2xl font-black text-ink transition active:bg-yellow/80 disabled:opacity-40" ${cant <= 3 ? "disabled" : ""} aria-label="Menos jugadores">−</button>
+                  <div class="flex flex-1 items-center justify-center gap-2">
+                    <span class="text-2xl font-black tabular-nums leading-none text-ink" id="cant-num">${cant}</span>
+                    <span class="text-[0.68rem] font-black uppercase tracking-widest text-mute">JUGADORES</span>
+                  </div>
+                  <button id="btn-mas" class="flex w-14 items-center justify-center border-l-2 border-ink bg-yellow text-2xl font-black text-ink transition active:bg-yellow/80 disabled:opacity-40" ${cant >= 8 ? "disabled" : ""} aria-label="Más jugadores">+</button>
+                </div>
+              </div>
+
+              <!-- Paso 02: Poned vuestros nombres -->
+              <div class="mt-3 border-t-2 border-ink/15 pt-2.5">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="brutal-box-sm grid h-6 w-6 place-items-center rounded-full bg-yellow text-[0.68rem] font-black">02</span>
+                    <span class="text-xs font-black uppercase tracking-wider text-ink">PONED VUESTROS NOMBRES</span>
+                  </div>
+                  <span class="text-[0.65rem] font-bold text-mute">Toca para editar</span>
+                </div>
+
+                <div class="mt-2 grid grid-cols-2 gap-2" id="grid-nombres">
+                  ${nombresActivos.map((nombre, i) => {
+                    const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+                    const ini = inicialJugador(nombre);
+                    return `
+                      <label class="brutal-box-sm flex h-11 cursor-text items-center gap-2 rounded-xl bg-white px-2.5 focus-within:ring-2 focus-within:ring-orange">
+                        <span class="grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 border-ink text-xs font-black text-ink" data-avatar="${i}" style="background-color:${color}">${esc(ini)}</span>
+                        <input
+                          type="text"
+                          data-idx="${i}"
+                          maxlength="14"
+                          value="${esc(nombre)}"
+                          placeholder="Jugador ${i + 1}"
+                          aria-label="Nombre del jugador ${i + 1}"
+                          class="player-input min-w-0 flex-1 bg-transparent text-xs font-extrabold text-ink outline-none placeholder:text-mute/60"
+                        />
+                        <span class="text-[0.65rem] font-bold tabular-nums text-mute">${pad2(i + 1)}</span>
+                      </label>
+                    `;
+                  }).join("")}
+                </div>
+              </div>
+
+              <!-- Paso 03: ¿Cuánto queréis sufrir? -->
+              <div class="mt-3 border-t-2 border-ink/15 pt-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="brutal-box-sm grid h-6 w-6 place-items-center rounded-full bg-yellow text-[0.68rem] font-black">03</span>
+                  <span class="text-xs font-black uppercase tracking-wider text-ink">¿CUÁNTO QUERÉIS SUFRIR?</span>
+                </div>
+
+                <div class="mt-2 grid grid-cols-3 gap-2.5" id="grid-rondas">
+                  ${[
+                    { r: 3, label: "RÁPIDA" },
+                    { r: 5, label: "NORMAL" },
+                    { r: 10, label: "ÉPICA" },
+                  ].map((opt) => {
+                    const activo = setup.rondas === opt.r;
+                    return `
+                      <button
+                        type="button"
+                        data-rondas="${opt.r}"
+                        class="brutal-btn flex flex-col items-center justify-center rounded-2xl py-2 ${activo ? "bg-yellow" : "bg-white"}"
+                      >
+                        <span class="text-xl font-black leading-none text-ink">${opt.r}</span>
+                        <span class="mt-1 text-[0.62rem] font-black uppercase tracking-wider text-ink/80">${opt.label}</span>
+                      </button>
+                    `;
+                  }).join("")}
+                </div>
+              </div>
+            </div>
+
+            <!-- Botón Empezar Partida -->
+            <div class="mt-3 pt-1">
+              <button id="btn-empezar" class="brutal-btn flex w-full items-center justify-center gap-2 rounded-2xl bg-orange py-3.5 text-base font-black uppercase tracking-wider text-ink">
+                <span>⚡</span>
+                <span>EMPEZAR PARTIDA</span>
+                <span>→</span>
+              </button>
+              <div class="mt-1.5 text-center text-[0.68rem] font-semibold text-mute">
+                Todo queda entre amigos y en este móvil.
+              </div>
+            </div>
+          </section>
+        </div>
+      `;
+
+      $("#btn-reglas-setup").onclick = openReglasModal;
+
+      $("#btn-menos").onclick = () => {
+        if (setup.cantidad > 3) {
+          setup.cantidad -= 1;
+          saveSetup();
+          renderSetup();
+        }
+      };
+
+      $("#btn-mas").onclick = () => {
+        if (setup.cantidad < 8) {
+          setup.cantidad += 1;
+          saveSetup();
+          renderSetup();
+        }
+      };
+
+      root.querySelectorAll(".player-input").forEach((input) => {
+        input.oninput = () => {
+          const idx = Number(input.dataset.idx);
+          setup.nombres[idx] = input.value;
+          saveSetup();
+          const avatar = root.querySelector(`[data-avatar="${idx}"]`);
+          if (avatar) {
+            avatar.textContent = inicialJugador(input.value || NOMBRES_DEFAULT[idx]);
+          }
+        };
+        input.onfocus = () => input.select();
+      });
+
+      root.querySelectorAll("[data-rondas]").forEach((btn) => {
+        btn.onclick = () => {
+          setup.rondas = Number(btn.dataset.rondas);
+          saveSetup();
+          renderSetup();
+        };
+      });
+
+      $("#btn-empezar").onclick = () => {
+        const nombresFinales = [];
+        for (let i = 0; i < setup.cantidad; i++) {
+          const n = (setup.nombres[i] || "").trim() || NOMBRES_DEFAULT[i] || `Jugador ${i + 1}`;
+          nombresFinales.push(n);
+        }
+        const unicos = new Set(nombresFinales.map((x) => x.toLowerCase()));
+        if (unicos.size < nombresFinales.length) {
+          return toast("Poned nombres distintos para no confundiros");
+        }
+        setup.nombres.splice(0, setup.cantidad, ...nombresFinales);
+        saveSetup();
+        partida = nuevaPartida(nombresFinales, setup.rondas);
+        victimaSeleccionada = null;
         save(partida);
         render();
       };
-      renderChips();
-      input.focus();
     }
 
+    // VISTA 2: FLUJO DE JUEGO Y VOTACIÓN
     function renderJuego() {
       const p = partida;
-      const lector = p.jugadores[p.lector];
-      const palo = ["♠", "♥", "♣", "♦"][p.indiceMazo % 4];
-      root.innerHTML = `
-        <header class="flex items-center justify-between">
-          <div>
-            <div class="text-[.95rem] font-extrabold tracking-wider"><b>AMIGOS DE MIERDA</b></div>
-            <div class="mt-0.5 text-[.8rem] text-mute">Lee: <b class="text-gold">${esc(lector.nombre)}</b> · Ronda ${p.ronda}</div>
-          </div>
-          <button class="rounded-lg border border-line/40 bg-transparent px-2 py-1 text-xs font-bold text-mute transition active:scale-95" id="reset">Reiniciar</button>
-        </header>
-        <div id="carta" class="relative mt-3 flex min-h-0 flex-1 flex-col justify-between overflow-hidden rounded-[22px] border-4 border-gold/50 bg-panel text-[1.02rem] font-bold leading-relaxed shadow-[0_20px_50px_-20px_rgba(0,0,0,.7)]">
-          <img src="${BASE}carta.webp" alt="" aria-hidden="true" class="pointer-events-none absolute inset-0 h-full w-full object-cover" onerror="this.remove()">
-          <span class="absolute left-3 top-2 z-10 text-2xl text-gold drop-shadow-[0_1px_3px_rgba(0,0,0,.7)]">${palo}</span>
-          <span class="absolute bottom-2 right-3 z-10 rotate-180 text-2xl text-gold drop-shadow-[0_1px_3px_rgba(0,0,0,.7)]">${palo}</span>
-          <div class="relative z-10 flex h-full items-center overflow-y-auto pt-5">
-            <div class="rounded-2xl bg-surface/90 p-3 text-[1.02rem] font-bold leading-relaxed text-dark shadow-lg">${esc(p.cartaActual)}</div>
-          </div>
-          <div class="relative z-10 mt-3 flex items-center justify-between text-[.7rem] font-extrabold uppercase tracking-wider opacity-60 text-ink"><span>${esc(lector.nombre)} lee</span><span class="tabular-nums">${palo} ${p.indiceMazo + 1}/${p.mazoBarajado.length}</span></div>
-        </div>
-        <div class="mt-2 text-[.78rem] text-mute">Todos señalan a su elegido: <b class="text-ink">toca una vez por ronda</b> al más señalado. Alcanzar <b class="text-gold">${p.umbral}</b> lo corona <b class="text-gold">EL AMIGO DE MIERDA</b>.</div>
-        <div class="mt-2 grid grid-cols-2 gap-2" id="players">${p.jugadores.map((j, i) => {
-          const pct = Math.min(100, Math.round((j.puntos / p.umbral) * 100));
-          const borde = i === p.lector ? "border-gold" : "border-line/40";
-          return `<div class="jugador relative flex cursor-pointer select-none flex-col gap-1 rounded-xl border-2 bg-panel p-2.5 transition active:scale-95 ${borde}" data-i="${i}">
-            <div class="truncate text-[.9rem] font-bold">${esc(j.nombre)}</div>
-            <div class="h-1.5 overflow-hidden rounded-full bg-bg/70"><i class="block h-full rounded-full bg-acc transition-[width] duration-300" style="width:${pct}%"></i></div>
-            <div class="text-xs text-mute tabular-nums">${j.puntos}/${p.umbral}</div>
-          </div>`;
-        }).join("")}</div>
-        <div class="mt-2.5 grid grid-cols-2 gap-2.5">
-          <button class="rounded-xl border border-line/40 bg-panel py-3.5 text-[.95rem] font-extrabold text-ink transition active:scale-95" id="back">Deshacer último</button>
-          <button class="rounded-xl bg-acc py-3.5 text-[.95rem] font-extrabold text-white transition active:scale-95" id="next">Siguiente carta</button>
-        </div>`;
+      const votante = p.jugadores[p.votanteActual] || p.jugadores[0];
+      const totalJugadores = p.jugadores.length;
+      const votosEmitidos = p.votosRonda.length;
+      const categoria = CATEGORIAS[p.indiceMazo % CATEGORIAS.length];
+      const numCarta = pad3((p.indiceMazo % 110) + 1);
+      const gridCols = totalJugadores <= 4 ? "grid-cols-4" : "grid-cols-4";
 
-      $("#players").onclick = (e) => {
-        const el = e.target.closest(".jugador");
-        if (!el) return;
-        const j = p.jugadores[+el.dataset.i];
-        if (p.ganador) return;
-        if (p.marcado) return toast("Ya señalaste en esta ronda");
-        marcar(p, j.nombre);
+      root.innerHTML = `
+        <div class="flex h-full flex-col overflow-hidden bg-cream">
+          <!-- Barra Superior -->
+          <header class="flex shrink-0 items-center justify-between border-b-[3px] border-ink bg-cream px-4 py-2.5">
+            <div class="leading-none">
+              <div class="text-[0.65rem] font-black uppercase tracking-widest text-ink">AMIGO</div>
+              <div class="text-lg font-black uppercase tracking-tight text-ink">DE MIERDA</div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="brutal-box-sm rounded-full bg-white px-3.5 py-1 text-xs font-black uppercase tracking-wider text-ink">
+                RONDA <span class="text-sm tabular-nums">${pad2(p.rondaActual)}</span> <span class="text-mute">/ ${p.rondasTotales}</span>
+              </div>
+              <button id="btn-reglas-juego" class="brutal-btn grid h-9 w-9 place-items-center rounded-full bg-yellow text-sm font-black text-ink" aria-label="Reglas y opciones">
+                <span class="grid h-5 w-5 place-items-center rounded-full border-2 border-ink text-xs leading-none">?</span>
+              </button>
+            </div>
+          </header>
+
+          <!-- Escenario Rojo con Cartas Apiladas -->
+          <div class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-red px-5 py-4">
+            <div class="relative flex h-full max-h-[340px] w-full max-w-[380px] items-center justify-center">
+              <!-- Carta trasera azul inclinada -->
+              <div class="brutal-box pointer-events-none absolute inset-1 -rotate-3 rounded-[22px] bg-blue"></div>
+              <!-- Carta intermedia amarilla inclinada -->
+              <div class="brutal-box pointer-events-none absolute inset-1 rotate-3 rounded-[22px] bg-yellow"></div>
+
+              <!-- Carta Principal Blanca -->
+              <article id="carta-activa" class="brutal-box-lg relative z-10 flex h-full w-full flex-col justify-between rounded-[22px] bg-cream p-5 text-ink">
+                <div>
+                  <span class="brutal-box-sm inline-flex items-center gap-1 rounded-full bg-yellow px-3 py-1 text-[0.68rem] font-black uppercase tracking-wider text-ink">
+                    <span>⚡</span>
+                    <span>${categoria}</span>
+                  </span>
+                  <div class="mt-3 text-[0.7rem] font-black uppercase tracking-wider text-red">
+                    ¿QUIÉN ES MÁS PROBABLE QUE...
+                  </div>
+                </div>
+
+                <div class="my-auto overflow-y-auto py-2">
+                  <p class="text-[1.35rem] font-black leading-[1.18] tracking-tight text-ink">
+                    ${esc(p.cartaActual)}
+                  </p>
+                </div>
+
+                <div class="flex items-center justify-between border-t-2 border-ink/15 pt-2.5 text-[0.68rem] font-black uppercase tracking-wider text-ink/70">
+                  <span>AMIGO DE MIERDA</span>
+                  <span class="tabular-nums">#${numCarta}</span>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <!-- Panel Inferior de Votación -->
+          <section class="relative z-20 -mt-3 flex shrink-0 flex-col rounded-t-[26px] border-t-[3px] border-ink bg-cream px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+            <!-- Indicador de turno de voto -->
+            <div class="flex items-center gap-2.5 rounded-2xl border-2 border-dashed border-ink/50 bg-white/80 px-3 py-2">
+              <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-ink text-xs font-black text-ink" style="background-color:${votante.color}">
+                ${esc(inicialJugador(votante.nombre))}
+              </span>
+              <div class="text-xs leading-snug text-ink">
+                <b class="font-black">${esc(votante.nombre)}, te toca.</b>
+                <span class="font-semibold text-mute"> Vota en secreto y pasa el móvil.</span>
+              </div>
+            </div>
+
+            <!-- Cabecera Elige a tu víctima -->
+            <div class="mt-2.5 flex items-center justify-between">
+              <span class="text-xs font-black uppercase tracking-wider text-ink">ELIGE A TU VÍCTIMA</span>
+              <span class="rounded-full bg-ink px-2.5 py-0.5 text-[0.68rem] font-black uppercase tracking-wider text-cream tabular-nums">
+                ${votosEmitidos}/${totalJugadores} VOTOS
+              </span>
+            </div>
+
+            <!-- Grid de avatares de jugadores -->
+            <div class="mt-2.5 grid ${gridCols} gap-2" id="votacion-players">
+              ${p.jugadores.map((j, idx) => {
+                const seleccionado = victimaSeleccionada === idx;
+                return `
+                  <button
+                    type="button"
+                    data-idx="${idx}"
+                    class="victim-btn group flex flex-col items-center rounded-xl py-1 transition active:scale-95"
+                  >
+                    <div
+                      class="relative grid ${totalJugadores > 4 ? "h-11 w-11 text-sm" : "h-13 w-13 text-base"} place-items-center rounded-full border-2 border-ink font-black text-ink transition-transform ${
+                        seleccionado
+                          ? "-translate-y-1 shadow-[0_5px_0_#161513] ring-2 ring-orange"
+                          : "shadow-[0_3px_0_#161513]"
+                      }"
+                      style="background-color:${j.color}"
+                    >
+                      ${esc(inicialJugador(j.nombre))}
+                      ${seleccionado ? `<span class="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full border-2 border-ink bg-ink text-[0.65rem] text-yellow">✓</span>` : ""}
+                    </div>
+                    <span class="mt-1 max-w-full truncate px-1 text-[0.72rem] ${seleccionado ? "font-black text-red underline" : "font-bold text-ink"}">
+                      ${esc(j.nombre)}
+                    </span>
+                  </button>
+                `;
+              }).join("")}
+            </div>
+
+            <!-- Botón Confirmar Voto -->
+            <button
+              id="btn-confirmar"
+              ${victimaSeleccionada === null ? "disabled" : ""}
+              class="brutal-btn mt-2.5 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-black uppercase tracking-wider transition ${
+                victimaSeleccionada === null
+                  ? "cursor-not-allowed border-ink/25 bg-ink/15 text-ink/40 shadow-[0_4px_0_rgba(22,21,19,0.2)]"
+                  : "bg-orange text-ink"
+              }"
+            >
+              <span>⚡</span>
+              <span>CONFIRMAR VOTO</span>
+            </button>
+          </section>
+        </div>
+      `;
+
+      $("#btn-reglas-juego").onclick = openReglasModal;
+
+      root.querySelectorAll(".victim-btn").forEach((btn) => {
+        btn.onclick = () => {
+          const idx = Number(btn.dataset.idx);
+          victimaSeleccionada = victimaSeleccionada === idx ? null : idx;
+          renderJuego();
+        };
+      });
+
+      $("#btn-confirmar").onclick = () => {
+        if (victimaSeleccionada === null) return;
+        const nombreVotante = votante.nombre;
+        const res = registrarVoto(p, victimaSeleccionada);
+        victimaSeleccionada = null;
         save(p);
-        if (p.ganador) { toast("El amigo de mierda existe"); render(); return; }
-        toast("+1 " + j.nombre);
-        render();
+
+        if (res.finPartida) {
+          toast("¡Veredicto final listo!");
+          render();
+          return;
+        }
+
+        if (res.finRonda) {
+          toast(`Ronda ${p.rondaActual} de ${p.rondasTotales}`);
+          render();
+          const c = $("#carta-activa");
+          if (c) c.classList.add("anim-flip");
+        } else {
+          const sig = p.jugadores[p.votanteActual];
+          toast(`Voto de ${nombreVotante} guardado · Turno de ${sig.nombre}`);
+          render();
+        }
       };
-      $("#next").onclick = () => { siguiente(p); save(p); render(); const c = $("#carta"); if (c) c.classList.add("anim-flip"); };
-      $("#back").onclick = () => {
-        if (!p.historial.length) return toast("Nada para deshacer");
-        deshacer(p, p.historial.pop());
-        save(p);
-        render();
-        toast("Deshecho");
-      };
-      $("#reset").onclick = () => { if (confirm("Reiniciar el juego?")) clearGame(); render(); };
     }
 
-    // ponytail: pantalla de resultado = el que alcanzó el umbral se corona amigo de mierda
+    // VISTA 3: PANTALLA FINAL (PERDEDOR DEFINITIVO + CLASIFICACIÓN + REVANCHA / CAMBIAR JUGADORES)
     function renderFin() {
       const p = partida;
+      const ranking = clasificacion(p);
+      const peor = ranking[0];
+      const maxPuntos = Math.max(1, peor.puntos);
+      const empatados = ranking.filter((j) => j.puntos === peor.puntos);
+
       root.innerHTML = `
-        <section class="anim-pop flex flex-1 flex-col items-center justify-center gap-1 pt-2 text-center">
-          <div class="anim-copo text-[3rem] leading-none">💩</div>
-          <h2 class="text-[1.35rem] font-extrabold leading-tight text-gold">${esc(p.ganador)} es<br>EL AMIGO DE MIERDA</h2>
-          <p class="text-[.8rem] text-mute">Alcanzó ${p.umbral} señalamientos. El peor de todos.</p>
-        </section>
-        <div class="anim-rise grid grid-cols-1 gap-2">
-          ${p.jugadores.map(j => `
-            <div class="flex items-center justify-between rounded-xl border-2 bg-panel px-3.5 py-2.5 ${j.nombre === p.ganador ? "border-gold shadow-[0_0_24px_rgba(221,161,54,.3)]" : "border-line/40"}">
-              <div class="font-bold ${j.nombre === p.ganador ? "text-gold" : ""}">${esc(j.nombre)}</div>
-              <div class="text-xs text-mute tabular-nums">${j.puntos} / ${p.umbral} puntos</div>
-            </div>`).join("")}
+        <div class="flex h-full flex-col overflow-hidden bg-red">
+          <!-- Cabecera Perdedor Definitivo -->
+          <header class="relative shrink-0 px-4 pb-5 pt-3 text-center text-cream">
+            <div class="flex items-center justify-between">
+              <span class="rounded-full border border-white/30 bg-ink/20 px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-widest">
+                FIN DE LA PARTIDA · ${p.rondasTotales} RONDAS
+              </span>
+              <button id="btn-reglas-fin" class="brutal-btn grid h-8 w-8 place-items-center rounded-full bg-yellow text-xs font-black text-ink" aria-label="Reglas">?</button>
+            </div>
+
+            <div class="anim-pop mt-2 flex flex-col items-center">
+              <div class="brutal-box-sm inline-flex items-center gap-1 rounded-full bg-yellow px-3 py-0.5 text-[0.68rem] font-black uppercase tracking-widest text-ink">
+                <span>💩</span>
+                <span>PERDEDOR DEFINITIVO</span>
+              </div>
+
+              <div class="relative mt-2.5">
+                <div
+                  class="brutal-box-lg grid h-20 w-20 place-items-center rounded-full text-3xl font-black text-ink"
+                  style="background-color:${peor.color}"
+                >
+                  ${esc(inicialJugador(peor.nombre))}
+                </div>
+                <span class="brutal-box-sm anim-copo absolute -bottom-1 -right-2 grid h-8 w-8 place-items-center rounded-full bg-yellow text-base">👑</span>
+              </div>
+
+              <h1 class="title-extrude mt-2 text-3xl font-black uppercase leading-none tracking-tight text-cream">
+                ${empatados.length > 1 ? empatados.map((e) => esc(e.nombre)).join(" & ") : esc(peor.nombre)}
+              </h1>
+              <p class="mt-1 text-xs font-extrabold uppercase tracking-wider text-yellow">
+                ${empatados.length > 1 ? "EMPATADOS COMO AMIGOS DE MIERDA" : "ES OFICIALMENTE EL AMIGO DE MIERDA"}
+              </p>
+
+              <div class="brutal-box-sm mt-2 inline-flex items-center gap-2 rounded-xl bg-white px-3.5 py-1 text-xs font-black text-ink">
+                <span>PUNTUACIÓN OBTENIDA:</span>
+                <span class="rounded-md bg-red px-2 py-0.5 text-cream tabular-nums">${peor.puntos} PTS DE MIERDA</span>
+              </div>
+            </div>
+          </header>
+
+          <!-- Clasificación Completa y Acciones -->
+          <section class="relative z-10 -mt-2 flex min-h-0 flex-1 flex-col justify-between rounded-t-[28px] border-t-[3px] border-ink bg-cream px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3.5 text-ink">
+            <div class="flex min-h-0 flex-1 flex-col">
+              <div class="flex items-center justify-between border-b-2 border-ink/15 pb-2">
+                <span class="text-xs font-black uppercase tracking-wider text-ink">CLASIFICACIÓN COMPLETA</span>
+                <span class="text-[0.68rem] font-bold uppercase text-mute">PUNTOS DE MIERDA</span>
+              </div>
+
+              <div class="mt-2.5 flex-1 space-y-2 overflow-y-auto pr-0.5">
+                ${ranking.map((j, i) => {
+                  const esPeor = j.puntos === peor.puntos && peor.puntos > 0;
+                  const pct = Math.round((j.puntos / maxPuntos) * 100);
+                  return `
+                    <div class="brutal-box-sm flex items-center gap-2.5 rounded-2xl ${esPeor ? "bg-yellow" : "bg-white"} px-3 py-2">
+                      <span class="w-5 text-xs font-black tabular-nums ${esPeor ? "text-red" : "text-mute"}">#${i + 1}</span>
+                      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 border-ink text-xs font-black text-ink" style="background-color:${j.color}">
+                        ${esc(inicialJugador(j.nombre))}
+                      </span>
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center justify-between">
+                          <span class="truncate text-xs font-black text-ink">${esc(j.nombre)} ${esPeor ? "💩" : ""}</span>
+                          <span class="text-xs font-black tabular-nums text-ink">${j.puntos} ${j.puntos === 1 ? "pto" : "pts"}</span>
+                        </div>
+                        <div class="mt-1 h-1.5 w-full overflow-hidden rounded-full border border-ink/40 bg-cream">
+                          <div class="h-full bg-red transition-all duration-300" style="width:${pct}%"></div>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join("")}
+              </div>
+            </div>
+
+            <!-- Botones de Revancha y Cambiar Jugadores -->
+            <div class="mt-3 grid grid-cols-1 gap-2 pt-1">
+              <button id="btn-revancha" class="brutal-btn flex w-full items-center justify-center gap-2 rounded-2xl bg-orange py-3.5 text-sm font-black uppercase tracking-wider text-ink">
+                <span>⚡</span>
+                <span>REVANCHA (MISMOS JUGADORES)</span>
+              </button>
+              <button id="btn-cambiar" class="brutal-btn flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3 text-xs font-black uppercase tracking-wider text-ink">
+                <span>CAMBIAR JUGADORES / RONDAS</span>
+              </button>
+            </div>
+          </section>
         </div>
-        <button class="mt-3 w-full rounded-xl bg-acc py-3.5 font-extrabold text-white transition active:scale-95" id="otra">Jugar otra vez</button>`;
-      $("#otra").onclick = () => { clearGame(); render(); };
+      `;
+
+      $("#btn-reglas-fin").onclick = openReglasModal;
+
+      // Revancha inmediata con los mismos jugadores y duración
+      $("#btn-revancha").onclick = () => {
+        const nombres = p.jugadores.map((j) => j.nombre);
+        partida = nuevaPartida(nombres, p.rondasTotales);
+        victimaSeleccionada = null;
+        save(partida);
+        toast("¡Nueva revancha en marcha!");
+        render();
+      };
+
+      // Volver a la pantalla de configuración conservando los nombres actuales para editarlos
+      $("#btn-cambiar").onclick = () => {
+        const nombresActuales = p.jugadores.map((j) => j.nombre);
+        setup.cantidad = Math.min(8, Math.max(3, nombresActuales.length));
+        for (let i = 0; i < nombresActuales.length; i++) {
+          setup.nombres[i] = nombresActuales[i];
+        }
+        setup.rondas = p.rondasTotales;
+        saveSetup();
+        clearGame();
+      };
     }
+
+    render();
   </script>
 </body>
 </html>

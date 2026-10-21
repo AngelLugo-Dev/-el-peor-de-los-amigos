@@ -1,39 +1,62 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0E2338;      /* Azul Marino Profundo: fondos */
-  --color-panel: #173A5C;   /* azul marino elevado: contenedores oscuros */
-  --color-surface: #F3F0E6; /* Blanco Marfil: tarjetas claras */
-  --color-dark: #1E1B18;    /* Carbón: texto sobre superficies claras */
-  --color-ink: #F3F0E6;     /* Marfil: texto sobre fondos oscuros */
-  --color-mute: #A7B7C4;    /* texto atenuado (derivado de la base) */
-  --color-acc: #D95228;     /* CTA / Action: botones principales */
-  --color-gold: #DDA136;    /* Dorado: marcos, insignias, destacar */
-  --color-line: #DDA136;    /* dorado como borde sutil (usar /50) */
-  --color-danger: #A91D22;  /* Rojo Rubí: alertas */
+  --color-cream: #F3EAD8;   /* Fondo crema principal */
+  --color-red: #DF4B38;     /* Rojo coral hero y mesa */
+  --color-yellow: #F5CE42;  /* Amarillo acento y selección */
+  --color-orange: #E86A33;  /* Naranja acción principal */
+  --color-blue: #4A90E2;    /* Azul cartas apiladas */
+  --color-ink: #161513;     /* Negro carbón bordes y texto */
+  --color-mute: #7A7267;    /* Gris cálido subtítulos */
 }
 
 @keyframes pop {
-  from { transform: scale(.92); opacity: 0; }
+  from { transform: scale(.94); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
 @keyframes rise {
-  from { transform: translateY(24px); opacity: 0; }
+  from { transform: translateY(16px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 @keyframes flip {
-  from { transform: perspective(600px) rotateX(90deg); opacity: 0; }
-  to { transform: perspective(600px) rotateX(0); opacity: 1; }
+  from { transform: perspective(700px) rotateY(20deg) scale(.96); opacity: 0; }
+  to { transform: perspective(700px) rotateY(0) scale(1); opacity: 1; }
 }
 @keyframes copo {
-  0%, 100% { transform: scale(1) rotate(0deg); }
-  50% { transform: scale(1.2) rotate(8deg); }
+  0%, 100% { transform: scale(1) rotate(-3deg); }
+  50% { transform: scale(1.12) rotate(5deg); }
 }
-.anim-pop { animation: pop .25s ease both; }
-.anim-rise { animation: rise .3s ease both; }
-.anim-flip { animation: flip .35s ease both; }
-.anim-copo { animation: copo 1.2s ease-in-out infinite; }
+.anim-pop { animation: pop .22s cubic-bezier(.2, .9, .3, 1) both; }
+.anim-rise { animation: rise .28s cubic-bezier(.2, .9, .3, 1) both; }
+.anim-flip { animation: flip .32s cubic-bezier(.2, .9, .3, 1) both; }
+.anim-copo { animation: copo 1.6s ease-in-out infinite; }
+
+/* Neo-brutalist utilities */
+.brutal-box {
+  border: 2.5px solid #161513;
+  box-shadow: 0 4px 0 #161513;
+}
+.brutal-box-sm {
+  border: 2px solid #161513;
+  box-shadow: 0 2.5px 0 #161513;
+}
+.brutal-box-lg {
+  border: 3px solid #161513;
+  box-shadow: 0 6px 0 #161513;
+}
+.brutal-btn {
+  border: 2.5px solid #161513;
+  box-shadow: 0 4px 0 #161513;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.brutal-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #161513;
+}
+.title-extrude {
+  text-shadow: 0 4px 0 #161513, -1.5px -1.5px 0 #161513, 1.5px -1.5px 0 #161513, -1.5px 1.5px 0 #161513, 1.5px 1.5px 0 #161513;
+}
 
 /* ponytail: toast es 5 líneas, no merece un componente */
-.toast { position: fixed; bottom: calc(1.5rem + env(safe-area-inset-bottom)); left: 50%; transform: translate(-50%, 150%); transition: transform .25s; z-index: 50; }
+.toast { position: fixed; bottom: calc(1.25rem + env(safe-area-inset-bottom)); left: 50%; transform: translate(-50%, 160%); transition: transform .25s cubic-bezier(.2,.9,.3,1); z-index: 60; }
 .toast.on { transform: translate(-50%, 0); }

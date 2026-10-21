@@ -1,25 +1,47 @@
-// ponytail: reglas base = carta pregunta + señalar a persona física + umbral configurable.
-// El que llega al umbral de señalamientos es EL AMIGO DE MIERDA (pierde y se corona). Sin eliminaciones.
-// Sin backend. El host toca al jugador más señalado => +1 punto. Límite => resultado.
+// ponytail: reglas base = rondas configurables (3, 5, 10) + votaciones por jugador.
+// Cada veredicto suma un "punto de mierda". Al terminar las rondas se corona EL AMIGO DE MIERDA.
 import { cartas } from './data/deck';
 
 export interface Jugador {
   nombre: string;
   puntos: number;
+  color: string;
 }
 
 export interface Partida {
   jugadores: Jugador[];
-  umbral: number;
+  rondasTotales: number;
+  rondaActual: number;
   mazoBarajado: string[];
   indiceMazo: number;
   cartaActual: string;
-  lector: number; // índice del que lee
-  ronda: number;
-  marcado: boolean; // ya se señaló a alguien en esta ronda (1 selección por ronda)
-  ganador: string | null; // quien alcanzó el umbral = amigo de mierda
-  historial: string[]; // nombres en orden para deshacer
+  votanteActual: number; // índice del jugador que está votando (0 a jugadores.length - 1)
+  votosRonda: number[]; // índices de los jugadores votados en la ronda actual
+  terminada: boolean;
+  ganador: string | null; // perdedor definitivo (quien más puntos de mierda acumuló)
 }
+
+export const AVATAR_COLORS = [
+  '#F27457', // Coral / Rojo suave
+  '#F5CE42', // Amarillo
+  '#74B3F2', // Azul cielo
+  '#F29BC6', // Rosa
+  '#68D391', // Verde menta
+  '#B794F4', // Lavanda
+  '#F6AD55', // Naranja melocotón
+  '#4FD1C5', // Turquesa
+];
+
+export const NOMBRES_DEFAULT = [
+  'Tú',
+  'Sofi',
+  'Nacho',
+  'Cami',
+  'Dani',
+  'Mati',
+  'Valen',
+  'Luli',
+];
 
 export function shuffle(a: string[]): string[] {
   const r = [...a];
@@ -30,51 +52,63 @@ export function shuffle(a: string[]): string[] {
   return r;
 }
 
-export function nuevaPartida(nombres: string[], umbral: number): Partida {
+export function inicialJugador(nombre: string): string {
+  const limpio = (nombre || '').trim();
+  return limpio ? limpio[0].toUpperCase() : '?';
+}
+
+export function nuevaPartida(nombres: string[], rondasTotales = 5): Partida {
   const mazoBarajado = shuffle(cartas);
+  const jugadores: Jugador[] = nombres.map((n, i) => ({
+    nombre: n.trim() || NOMBRES_DEFAULT[i] || `Jugador ${i + 1}`,
+    puntos: 0,
+    color: AVATAR_COLORS[i % AVATAR_COLORS.length],
+  }));
   return {
-    jugadores: nombres.map((n) => ({ nombre: n, puntos: 0 })),
-    umbral,
+    jugadores,
+    rondasTotales,
+    rondaActual: 1,
     mazoBarajado,
     indiceMazo: 0,
     cartaActual: mazoBarajado[0],
-    lector: 0,
-    ronda: 1,
-    marcado: false,
+    votanteActual: 0,
+    votosRonda: [],
+    terminada: false,
     ganador: null,
-    historial: [],
   };
 }
 
-// sumar punto al señalado; 1 sola selección por ronda; al llegar al umbral se corona amigo de mierda
-export function marcar(p: Partida, nombre: string) {
-  const j = p.jugadores.find((x) => x.nombre === nombre);
-  if (!j || p.ganador || p.marcado) return;
-  j.puntos += 1;
-  p.historial.push(nombre);
-  p.marcado = true;
-  if (j.puntos >= p.umbral) p.ganador = nombre;
-}
+// Registrar el voto del votanteActual hacia el jugador en indiceVictima.
+// Cada voto suma 1 "punto de mierda" al elegido.
+// Cuando todos los jugadores votan en la ronda, avanza a la siguiente ronda o termina la partida.
+export function registrarVoto(p: Partida, indiceVictima: number): { finRonda: boolean; finPartida: boolean } {
+  if (p.terminada) return { finRonda: false, finPartida: false };
+  const victima = p.jugadores[indiceVictima];
+  if (!victima) return { finRonda: false, finPartida: false };
 
-// deshacer el último punto (error de dedo); deja disponible la selección de la ronda
-export function deshacer(p: Partida, nombre: string) {
-  const j = p.jugadores.find((x) => x.nombre === nombre);
-  if (!j || j.puntos <= 0) return;
-  j.puntos -= 1;
-  if (j.puntos < p.umbral) p.ganador = null;
-  p.marcado = false;
-}
+  victima.puntos += 1;
+  p.votosRonda.push(indiceVictima);
+  p.votanteActual += 1;
 
-// siguiente ronda: nueva carta (sin repetir hasta agotar), rota quién lee, reabre la selección
-export function siguiente(p: Partida) {
-  if (p.ganador) return;
-  p.lector = (p.lector + 1) % p.jugadores.length;
-  p.indiceMazo += 1;
-  if (p.indiceMazo >= p.mazoBarajado.length) {
-    p.mazoBarajado = shuffle(cartas);
-    p.indiceMazo = 0;
-    p.ronda += 1;
+  if (p.votanteActual >= p.jugadores.length) {
+    if (p.rondaActual >= p.rondasTotales) {
+      p.terminada = true;
+      const ordenados = [...p.jugadores].sort((a, b) => b.puntos - a.puntos);
+      p.ganador = ordenados[0]?.nombre || null;
+      return { finRonda: true, finPartida: true };
+    } else {
+      p.rondaActual += 1;
+      p.votanteActual = 0;
+      p.votosRonda = [];
+      p.indiceMazo = (p.indiceMazo + 1) % p.mazoBarajado.length;
+      p.cartaActual = p.mazoBarajado[p.indiceMazo];
+      return { finRonda: true, finPartida: false };
+    }
   }
-  p.cartaActual = p.mazoBarajado[p.indiceMazo];
-  p.marcado = false;
+
+  return { finRonda: false, finPartida: false };
+}
+
+export function clasificacion(p: Partida): Jugador[] {
+  return [...p.jugadores].sort((a, b) => b.puntos - a.puntos);
 }
